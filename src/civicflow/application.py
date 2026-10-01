@@ -15,6 +15,7 @@ from .outbox import Outbox
 from .repository import EntityRepository
 from .reservations import ReservationBook
 from .timeutil import Clock
+from . import watermarks
 
 
 @dataclass(frozen=True)
@@ -41,3 +42,15 @@ class CivicFlow:
             entity_count = connection.execute("SELECT COUNT(*) AS n FROM entities").fetchone()["n"]
             conflict_count = connection.execute("SELECT COUNT(*) AS n FROM inbox_conflicts").fetchone()["n"]
         return {"audit_entries": audit_count, "entities": entity_count, "inbox_conflicts": conflict_count}
+
+    def high_watermark(self) -> int:
+        """返回已持久化的最高顺序水位（供移交时声明材料边界）。"""
+        with self.database.connect() as connection:
+            return watermarks.high_watermark(connection)
+
+    def audit_window(self, *, at_seq: int | None = None, entity_type: str | None = None,
+                     entity_id: str | None = None) -> list[dict]:
+        """按水位顺序返回审计记录，可限定到某水位（含）或某实体。"""
+        with self.database.connect() as connection:
+            return AuditLog(self.clock).entries(connection, at_seq=at_seq,
+                                               entity_type=entity_type, entity_id=entity_id)
