@@ -76,9 +76,9 @@ class CaseService:
             raise NotFoundError(f"{self.entity_type}/{entity_id} 不存在")
         return [redact_record(row, RESTRICTED_FIELDS, context) for row in rows]
 
-    def snapshot(self, context: AccessContext, entity_id: str, *, as_of: str) -> dict:
+    def snapshot(self, context: AccessContext, entity_id: str, *, as_of: str, bound: str = "last", watermark: int | None = None) -> dict:
         context.require("history:cases")
-        record = self._repository.snapshot(self.entity_type, entity_id, as_of=as_of)
+        record = self._repository.snapshot(self.entity_type, entity_id, as_of=as_of, bound=bound, watermark=watermark)
         return redact_record(record, RESTRICTED_FIELDS, context)
 
     def bulk_get(self, context: AccessContext, entity_ids: Iterable[str]) -> list[dict]:
